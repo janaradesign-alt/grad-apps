@@ -406,6 +406,15 @@ select[data-tone=warn], .chip.warn, .banner { background: var(--tan); color: var
   .today .bigdate { font-size: 112px; }
   .ustack { grid-template-columns: 1fr; }
 }
+
+/* Notepad */
+.qn { display: flex; gap: 8px; margin: 0 0 12px; }
+.qn input { flex: 1; min-width: 0; background: var(--card); border-radius: 99px; padding: 0 18px; min-height: 48px; }
+.nbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.editor .foot .btn.primary { background: var(--tan); color: var(--tan-ink); }
+.editor .check { grid-template-columns: auto minmax(0, 1fr) auto; }
+.editor .tasks .tx input { background: transparent; padding-left: 0; }
+.ditem[aria-current="true"] { background: var(--sel); border-radius: 14px; }
 </style>
 </head>
 <body>
@@ -448,6 +457,7 @@ select[data-tone=warn], .chip.warn, .banner { background: var(--tan); color: var
     chev: '<path d="m9 6 6 6-6 6"/>',
     folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
     arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>',
+    note: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',
     back: '<path d="M19 12H5m5-5-5 5 5 5"/>'
   };
   var VIEWS = [
@@ -458,11 +468,12 @@ select[data-tone=warn], .chip.warn, .banner { background: var(--tan); color: var
     { id: 'faculty', label: 'Faculty', icon: 'faculty', sub: 'Who you have contacted and who you will name.' },
     { id: 'letters', label: 'Letters', icon: 'letters', sub: 'Recommenders and where each letter stands.' },
     { id: 'drafts', label: 'Drafts', icon: 'drafts', sub: 'Statements and essays with live word counts.' },
+    { id: 'notes', label: 'Notepad', icon: 'note', sub: 'Quick notes and checklists. Every edit keeps a history you can restore.' },
     { id: 'tasks', label: 'Tasks', icon: 'tasks', sub: 'Open questions and to-dos.' }
   ];
   var BNAV = ['dashboard', 'programs', 'faculty', 'drafts'];
 
-  var state = { programs: [], letters: [], tasks: [], drafts: [] };
+  var state = { programs: [], letters: [], tasks: [], drafts: [], notes: [] };
   var L = { programs: false, letters: false, tasks: false, drafts: false };
   var ui = { tab: 'dashboard', open: {}, armed: '', hideDone: false, matProg: 'all', q: '', status: 'all', role: 'all', due: false, fold: {}, draftId: '', facFilter: 'all', drawer: false, addsheet: false, facAdd: false, canWrite: true, hasDb: null, draftBuf: null, draftTimer: 0 };
   try { var st = localStorage.getItem('gat-tab'); if (st && VIEWS.some(function (v) { return v.id === st; })) ui.tab = st; } catch (e) {}
@@ -559,6 +570,7 @@ select[data-tone=warn], .chip.warn, .banner { background: var(--tan); color: var
     if (id === 'programs') return state.programs.length;
     if (id === 'letters') return state.letters.length;
     if (id === 'drafts') return state.drafts.length;
+    if (id === 'notes') return state.notes.length;
     if (id === 'tasks') return state.tasks.filter(function (t) { return !t.done; }).length;
     if (id === 'faculty') { var n = 0; state.programs.forEach(function (p) { n += (p.faculty || []).length; }); return n; }
     return null;
@@ -591,7 +603,7 @@ select[data-tone=warn], .chip.warn, .banner { background: var(--tan); color: var
   }
   function addSheet() {
     if (!ui.addsheet) return '';
-    var k = [['task', 'New task'], ['faculty', 'Add faculty or group'], ['letter', 'Add recommender'], ['draft', 'New draft'], ['program', 'Add program']];
+    var k = [['note', 'New note'], ['checklist', 'New checklist'], ['task', 'New task'], ['faculty', 'Add faculty or group'], ['letter', 'Add recommender'], ['draft', 'New draft'], ['program', 'Add program']];
     return '<button class="backdrop" data-act="addmenu" aria-label="Close"></button><div class="sheet" role="dialog" aria-label="Add"><div class="grab"></div><h3>Add</h3>' +
       k.map(function (x) { return '<button class="lrow" data-act="goadd" data-kind="' + x[0] + '">' + icon('plus', 20) + '<span class="lbl">' + x[1] + '</span></button>'; }).join('') + '</div>';
   }
@@ -672,6 +684,9 @@ select[data-tone=warn], .chip.warn, .banner { background: var(--tan); color: var
       var p = t.programId ? byId(state.programs, t.programId) : null;
       return '<div class="check"><input type="checkbox" data-act="taskdone" data-id="' + t.id + '"' + ro() + ' aria-label="Mark done: ' + esc(t.text) + '"><div class="tx">' + esc(t.text) + (p ? '<small>' + esc(pname(p)) + '</small>' : '') + '</div><span></span></div>';
     }).join('') + '</div>' : '<div class="empty"><b>All clear</b>Nothing left on your list.</div>';
+    h += sh('Notepad', 'notes') + '<div class="qn"><input type="text" id="quickNote" placeholder="Jot something down" aria-label="Quick note" autocomplete="off"' + ro() + '><button class="btn primary" data-act="quicknote"' + ro() + '>Add</button></div>';
+    var nl = sortedNotes().slice(0, 3);
+    h += nl.length ? '<div class="list">' + nl.map(noteRow).join('') + '</div>' : '<div class="note">Notes and checklists you add show up here.</div>';
     var ups = facUpdates();
     h += sh('Faculty updates', 'faculty') + (ups.length ? '<div class="list">' + ups.slice(0, 4).map(upRow).join('') + '</div>' : '<div class="empty"><b>Nothing to follow up</b>Mark who you have contacted on the Faculty tab and updates appear here.</div>');
     var lets = state.letters.slice().sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
@@ -865,8 +880,121 @@ select[data-tone=warn], .chip.warn, .banner { background: var(--tan); color: var
     return '<div class="split' + (d && ui.draftId ? ' has-sel' : '') + '">' + left + right + '</div>';
   }
 
+
+  // ---- Notepad ----
+  function noteTitle(n) { var t = (n.title || '').trim(); if (t) return t; var l = String(n.text || '').split('\n').filter(function (x) { return x.trim(); })[0]; if (l) return l.slice(0, 70); var it = (n.items || [])[0]; return it ? it.t.slice(0, 70) : 'Untitled'; }
+  function noteStamp(iso) { var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+  function noteProgress(n) { var it = n.items || []; return it.length ? it.filter(function (x) { return x.done; }).length + '/' + it.length : ''; }
+  function notePreview(x, max) {
+    var s = x.kind === 'list' || (x.items && x.items.length && !x.text) ? (x.items || []).slice(0, 4).map(function (i) { return (i.done ? '✓ ' : '○ ') + i.t; }).join('  ') : String(x.text || '').replace(/\s+/g, ' ').trim();
+    return s.length > max ? s.slice(0, max) + '…' : s;
+  }
+  function sortedNotes() { return state.notes.slice().sort(function (a, b) { return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (Date.parse(b.updated || '') || 0) - (Date.parse(a.updated || '') || 0); }); }
+  function noteRow(n) {
+    return '<button class="row link" data-act="opennote" data-id="' + n.id + '"><div><div class="t">' + (n.pinned ? '📌 ' : '') + esc(noteTitle(n)) + '</div><div class="s">' + esc(notePreview(n, 90) || noteStamp(n.updated)) + '</div></div>' + (n.kind === 'list' ? chip(noteProgress(n) || 'Checklist', '') : '') + '</button>';
+  }
+  function noteSave(id, f) {
+    var n = byId(state.notes, id); if (!n) return Promise.resolve(false);
+    var o = {}, changed = false;
+    Object.keys(f).forEach(function (k) { o[k] = f[k]; if (k !== 'pinned' && JSON.stringify(f[k]) !== JSON.stringify(n[k] == null ? (k === 'items' ? [] : '') : n[k])) changed = true; });
+    if (changed) {
+      var nowIso = new Date().toISOString(), gap = Date.now() - (Date.parse(n.updated || '') || 0);
+      o.updated = nowIso;
+      if (gap > 180000 && (n.text || n.title || (n.items || []).length)) o.versions = [{ ts: n.updated || nowIso, title: n.title || '', text: n.text || '', items: n.items || [] }].concat(n.versions || []).slice(0, 25);
+    }
+    return patch('notes', id, o);
+  }
+  function setNoteSaved(t) { var el = document.getElementById('noteSaved'); if (el) el.textContent = t; }
+  function flushNote() {
+    if (!ui.noteBuf) return; var b = ui.noteBuf; ui.noteBuf = null; clearTimeout(ui.noteTimer);
+    setNoteSaved('Saving…'); noteSave(b.id, { text: b.text }).then(function (ok) { setNoteSaved(ok ? 'Saved' : 'Not saved'); });
+  }
+  function newNote(kind, text) {
+    if (!db || !ui.canWrite) return '';
+    var now = new Date().toISOString();
+    var id = create('notes', { kind: kind, title: '', text: text || '', items: [], pinned: false, created: now, updated: now, versions: [] });
+    ui.noteId = id; ui.noteWant = id; ui.noteHist = false; setTab('notes');
+    setTimeout(function () { var el = document.getElementById(kind === 'list' ? 'noteTitle' : 'noteText'); if (el) el.focus(); }, 80);
+    return id;
+  }
+  function restoreNote(id, i) {
+    var n = byId(state.notes, id); if (!n) return; var v = (n.versions || [])[i]; if (!v) return;
+    var nowIso = new Date().toISOString();
+    var vers = [{ ts: n.updated || nowIso, title: n.title || '', text: n.text || '', items: n.items || [] }].concat((n.versions || []).filter(function (x, k) { return k !== i; })).slice(0, 25);
+    patch('notes', id, { title: v.title || '', text: v.text || '', items: v.items || [], updated: nowIso, versions: vers }); ui.noteHist = false; toast('Restored the version from ' + noteStamp(v.ts));
+  }
+  function viewNotes() {
+    var list = sortedNotes(), r = ui.canWrite ? '' : ' readonly';
+    var d = byId(list, ui.noteId);
+    if (d && ui.noteWant === d.id) ui.noteWant = '';
+    if (!d && ui.noteWant && ui.noteWant === ui.noteId) { /* new note is still arriving */ }
+    else if (!d && !mobile.matches && list.length) { d = list[0]; ui.noteId = d.id; }
+    var left = '<div class="dcol">' + (ui.canWrite ? '<div class="nbar"><button class="btn primary small" data-act="newnote" data-kind="note">' + icon('plus', 16) + 'Note</button><button class="btn small" data-act="newnote" data-kind="list">' + icon('plus', 16) + 'Checklist</button></div>' : '') +
+      (list.length ? '<div class="dlist">' + list.map(function (x) {
+        return '<button class="ditem" data-act="opennote" data-id="' + x.id + '" aria-current="' + (x.id === ui.noteId) + '"><span class="t">' + (x.pinned ? '📌 ' : '') + esc(noteTitle(x)) + '</span><span class="s">' + (x.kind === 'list' ? chip(noteProgress(x) || 'Checklist', '') : chip('Note', '')) + '<span>' + esc(noteStamp(x.updated)) + '</span></span></button>';
+      }).join('') + '</div>' : '<div class="empty"><b>No notes yet</b>Add a note or a checklist for anything that does not belong in a program.</div>') + '</div>';
+    var right = '<div class="editor">';
+    if (d) {
+      right += '<button class="btn small back" data-act="noteback">' + icon('back', 16) + 'All notes</button>';
+      if (ui.noteHist) {
+        var vs = d.versions || [];
+        right += '<div class="sh" style="margin:0"><h2>History</h2><button class="link" data-act="notehist">Back to note</button></div><p class="note">Earlier versions are saved automatically as you edit. Restoring keeps your current version in this list too.</p><div class="list"><div class="row"><div><div class="t">Current version</div><div class="s">' + esc(noteStamp(d.updated)) + '</div></div></div>' +
+          (vs.length ? vs.map(function (v, i) { return '<div class="row"><div><div class="t">' + esc(noteStamp(v.ts)) + '</div><div class="s">' + esc(notePreview({ kind: d.kind, text: v.text, items: v.items }, 140) || (v.title || 'Empty')) + '</div></div>' + (ui.canWrite ? '<button class="btn small" data-act="noterestore" data-id="' + d.id + '" data-i="' + i + '">Restore</button>' : '') + '</div>'; }).join('') : '<div class="row"><div class="s">No earlier versions yet. They appear after you edit this note over time.</div></div>') + '</div>';
+      } else {
+        right += '<div class="f"><label for="noteTitle">Title</label><input id="noteTitle" type="text" value="' + esc(d.title || '') + '" placeholder="Untitled" data-act="notetitle" data-id="' + d.id + '"' + r + '></div>';
+        if (d.kind === 'list') {
+          var it = d.items || [];
+          right += '<div class="tasks">' + (it.length ? it.map(function (x, i) {
+            return '<div class="check' + (x.done ? ' done' : '') + '"><input type="checkbox" data-act="noteitemdone" data-id="' + d.id + '" data-i="' + i + '"' + (x.done ? ' checked' : '') + ro() + ' aria-label="Done"><div class="tx"><input type="text" id="ni-' + i + '" value="' + esc(x.t) + '" data-act="noteitemtext" data-id="' + d.id + '" data-i="' + i + '" aria-label="Item"' + r + '></div>' + (ui.canWrite ? '<button class="link" data-act="noteitemdel" data-id="' + d.id + '" data-i="' + i + '" aria-label="Delete item">Delete</button>' : '<span></span>') + '</div>';
+          }).join('') : '<div class="check"><div class="note">No items yet.</div></div>') + '</div>';
+          if (ui.canWrite) right += '<div class="addrow"><input type="text" id="noteNewItem" placeholder="Add an item" aria-label="New item" autocomplete="off"><button class="btn primary" data-act="noteitemadd" data-id="' + d.id + '">Add</button>' + (it.some(function (x) { return x.done; }) ? '<button class="btn" data-act="noteclear" data-id="' + d.id + '">Clear checked</button>' : '') + '</div>';
+        } else {
+          right += '<div class="f"><label for="noteText">Note</label><textarea id="noteText" data-keep data-id="' + d.id + '" spellcheck="true" placeholder="Write anything here. It saves as you type."' + r + '>' + esc(d.text || '') + '</textarea></div>';
+        }
+        right += '<div class="foot"><span class="note" id="noteSaved" role="status">' + esc(d.updated ? 'Saved ' + noteStamp(d.updated) : '') + '</span><span style="flex:1"></span>' +
+          '<button class="btn small" data-act="notehist">History' + ((d.versions || []).length ? ' (' + d.versions.length + ')' : '') + '</button>' +
+          (ui.canWrite ? '<button class="btn small' + (d.pinned ? ' primary' : '') + '" data-act="notepin" data-id="' + d.id + '">' + (d.pinned ? 'Pinned' : 'Pin') + '</button><button class="btn small danger' + (ui.armed === 'n' + d.id ? ' armed' : '') + '" data-act="delnote" data-id="' + d.id + '">' + (ui.armed === 'n' + d.id ? 'Tap again to delete (history too)' : 'Delete') + '</button>' : '') + '</div>';
+      }
+    }
+    right += '</div>';
+    return '<div class="split' + (d && ui.noteId ? ' has-sel' : '') + '">' + left + right + '</div>';
+  }
+  document.addEventListener('input', function (e) {
+    var t = e.target; if (!t || t.id !== 'noteText') return;
+    ui.noteBuf = { id: t.getAttribute('data-id'), text: t.value }; setNoteSaved('Saving…'); clearTimeout(ui.noteTimer); ui.noteTimer = setTimeout(flushNote, 1000);
+  });
+  document.addEventListener('change', function (e) {
+    var t = e.target, act = t && t.getAttribute && t.getAttribute('data-act'); if (!act || act.indexOf('note') !== 0) return;
+    var id = t.getAttribute('data-id'), i = +t.getAttribute('data-i'), n = byId(state.notes, id); if (!n) return;
+    var items = (n.items || []).map(function (x) { return Object.assign({}, x); });
+    if (act === 'notetitle') noteSave(id, { title: t.value });
+    else if (act === 'noteitemdone') { items[i].done = t.checked; noteSave(id, { items: items }); }
+    else if (act === 'noteitemtext') { if (!t.value.trim()) items.splice(i, 1); else items[i].t = t.value; noteSave(id, { items: items }); }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || !e.target) return;
+    if (e.target.id === 'quickNote') { e.preventDefault(); var b = document.querySelector('[data-act=quicknote]'); if (b) b.click(); }
+    else if (e.target.id === 'noteNewItem') { e.preventDefault(); var b2 = document.querySelector('[data-act=noteitemadd]'); if (b2) b2.click(); }
+  });
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('[data-act]') : null; if (!t) return;
+    var act = t.getAttribute('data-act'); if (act.indexOf('note') !== 0 && act !== 'opennote' && act !== 'quicknote' && act !== 'delnote' && act !== 'newnote') return;
+    var id = t.getAttribute('data-id'), i = +t.getAttribute('data-i'), n = byId(state.notes, id);
+    if (act === 'quicknote') { var q = document.getElementById('quickNote'), v = q ? q.value.trim() : ''; if (!v) { if (q) q.focus(); return; } var now = new Date().toISOString(); create('notes', { kind: 'note', title: '', text: v, items: [], pinned: false, created: now, updated: now, versions: [] }); q.value = ''; toast('Added to Notepad'); }
+    else if (act === 'newnote') newNote(t.getAttribute('data-kind'));
+    else if (act === 'opennote') { flushNote(); ui.noteId = id; ui.noteHist = false; ui.armed = ''; ui.tab = 'notes'; try { localStorage.setItem('gat-tab', 'notes'); } catch (x) {} render(); window.scrollTo(0, 0); }
+    else if (act === 'noteback') { flushNote(); ui.noteId = ''; ui.noteHist = false; render(); }
+    else if (act === 'notehist') { flushNote(); ui.noteHist = !ui.noteHist; render(); }
+    else if (act === 'noterestore') restoreNote(id, i);
+    else if (act === 'notepin' && n) noteSave(id, { pinned: !n.pinned });
+    else if (act === 'delnote') { if (ui.armed === 'n' + id) { ui.armed = ''; ui.noteId = ''; remove('notes', id); } else { ui.armed = 'n' + id; render(); } }
+    else if (act === 'noteitemadd' && n) { var inp = document.getElementById('noteNewItem'), tx = inp ? inp.value.trim() : ''; if (!tx) { if (inp) inp.focus(); return; } var its = (n.items || []).concat([{ t: tx, done: false }]); noteSave(id, { items: its }); inp.value = ''; setTimeout(function () { var el = document.getElementById('noteNewItem'); if (el) el.focus(); }, 60); }
+    else if (act === 'noteitemdel' && n) { var its2 = (n.items || []).slice(); its2.splice(i, 1); noteSave(id, { items: its2 }); }
+    else if (act === 'noteclear' && n) noteSave(id, { items: (n.items || []).filter(function (x) { return !x.done; }) });
+  });
+
   function body() {
-    var map = { dashboard: viewDashboard, programs: viewPrograms, materials: viewMaterials, calendar: viewCalendar, faculty: viewFaculty, letters: viewLetters, drafts: viewDrafts, tasks: viewTasks };
+    var map = { dashboard: viewDashboard, programs: viewPrograms, materials: viewMaterials, calendar: viewCalendar, faculty: viewFaculty, letters: viewLetters, drafts: viewDrafts, notes: viewNotes, tasks: viewTasks };
     return (map[ui.tab] || viewDashboard)();
   }
   function shell() {
@@ -899,6 +1027,7 @@ select[data-tone=warn], .chip.warn, .banner { background: var(--tan); color: var
   // ---- drafts autosave ----
   function setSaved(t) { var el = document.getElementById('draftSaved'); if (el) el.textContent = t; }
   function flushDraft() {
+    flushNote();
     if (!ui.draftBuf) return; var b = ui.draftBuf; ui.draftBuf = null; clearTimeout(ui.draftTimer);
     setSaved('Saving…');
     patch('drafts', b.id, { text: b.text, updated: new Date().toISOString() }).then(function (ok) { setSaved(ok ? 'Saved' : 'Not saved'); });
@@ -955,6 +1084,7 @@ select[data-tone=warn], .chip.warn, .banner { background: var(--tan); color: var
     else if (act === 'addmenu') { ui.addsheet = !ui.addsheet; ui.drawer = false; render(); }
     else if (act === 'goadd') {
       var kind = t.getAttribute('data-kind'); ui.addsheet = false;
+      if (kind === 'note' || kind === 'checklist') { newNote(kind === 'checklist' ? 'list' : 'note'); return; }
       var map = { task: ['tasks', 'newTask'], faculty: ['faculty', 'newFacName'], letter: ['letters', 'newLetter'] };
       if (kind === 'faculty') ui.facAdd = true;
       if (map[kind]) { setTab(map[kind][0]); setTimeout(function () { var el = document.getElementById(map[kind][1]); if (el) { el.focus(); el.scrollIntoView({ block: 'center' }); } }, 60); }
@@ -1030,7 +1160,7 @@ select[data-tone=warn], .chip.warn, .banner { background: var(--tan); color: var
     var data = null, subs = {}, saveT = 0;
     try { data = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { data = null; }
     if (!data || typeof data !== 'object') { data = JSON.parse(JSON.stringify(seed)); persist(); }
-    ['programs', 'letters', 'tasks', 'drafts'].forEach(function (c) { if (!data[c]) data[c] = {}; });
+    ['programs', 'letters', 'tasks', 'drafts', 'notes'].forEach(function (c) { if (!data[c]) data[c] = {}; });
     function persist() { try { localStorage.setItem(KEY, JSON.stringify(data)); return true; } catch (e) { toast('Could not save on this phone. Storage may be full.'); return false; } }
     function clone(x) { return JSON.parse(JSON.stringify(x)); }
     function snap(c) { var col = data[c] || {}; return { docs: Object.keys(col).map(function (id) { return { id: id, data: function () { return clone(col[id]); } }; }) }; }
@@ -1056,8 +1186,8 @@ select[data-tone=warn], .chip.warn, .banner { background: var(--tan); color: var
       importAll: function (text) {
         var o = JSON.parse(text), d = o && o.data ? o.data : o;
         if (!d || !d.programs) throw new Error('bad');
-        data = d; ['programs', 'letters', 'tasks', 'drafts'].forEach(function (c) { if (!data[c]) data[c] = {}; });
-        persist(); ['programs', 'letters', 'tasks', 'drafts'].forEach(notify);
+        data = d; ['programs', 'letters', 'tasks', 'drafts', 'notes'].forEach(function (c) { if (!data[c]) data[c] = {}; });
+        persist(); ['programs', 'letters', 'tasks', 'drafts', 'notes'].forEach(notify);
       }
     };
   }
@@ -1097,7 +1227,7 @@ select[data-tone=warn], .chip.warn, .banner { background: var(--tan); color: var
         L[coll] = true; schedule();
       });
     }
-    sub('programs'); sub('letters'); sub('tasks'); sub('drafts');
+    sub('programs'); sub('letters'); sub('tasks'); sub('drafts'); sub('notes');
     render();
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
   })();
