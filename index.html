@@ -419,6 +419,10 @@ select[data-tone=warn], .chip.warn, .banner { background: var(--tan); color: var
 .editor .tasks .tx input { background: transparent; padding-left: 0; }
 .ditem[aria-current="true"] { background: var(--sel); border-radius: 14px; }
 .about { display: flex; align-items: center; gap: 12px; padding: 16px 2px 4px; }
+.addlead { display: flex; align-items: center; gap: 14px; width: 100%; border: 0; border-radius: 22px; background: var(--tan); color: var(--tan-ink); padding: 16px 18px; text-align: left; margin: 4px 0 10px; min-height: 68px; }
+.addlead .al { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.addlead b { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+.addlead .al span { font-size: 13px; opacity: .8; }
 </style>
 </head>
 <body>
@@ -603,12 +607,13 @@ select[data-tone=warn], .chip.warn, .banner { background: var(--tan); color: var
     if (!ui.drawer) return '';
     return '<button class="backdrop" data-act="drawer" aria-label="Close menu"></button><div class="sheet" role="dialog" aria-label="All views"><div class="grab"></div>' +
       VIEWS.map(function (v) { var c = navCount(v.id); return '<button class="lrow" data-act="tab" data-tab="' + v.id + '"' + (ui.tab === v.id ? ' aria-current="page"' : '') + '>' + icon(v.icon, 20) + '<span class="lbl">' + v.label + '</span>' + (c ? '<span class="count">' + c + '</span>' : '') + '</button>'; }).join('') +
-      '<button class="lrow" data-act="export">' + icon('download', 20) + '<span class="lbl">Export programs as CSV</span></button><button class="lrow" data-act="backup">' + icon('download', 20) + '<span class="lbl">Back up all data</span></button><button class="lrow" data-act="restore">' + icon('plus', 20) + '<span class="lbl">Restore from backup</span></button><div class="about"><img src="almanac-192.png" width="44" height="44" alt="" style="border-radius:11px;display:block"><div><b>Almanac</b><div class="note">Build 5 &middot; Nov 4, 2026</div></div></div></div>';
+      '<button class="lrow" data-act="export">' + icon('download', 20) + '<span class="lbl">Export programs as CSV</span></button><button class="lrow" data-act="backup">' + icon('download', 20) + '<span class="lbl">Back up all data</span></button><button class="lrow" data-act="restore">' + icon('plus', 20) + '<span class="lbl">Restore from backup</span></button><div class="about"><img src="almanac-192.png" width="44" height="44" alt="" style="border-radius:11px;display:block"><div><b>Almanac</b><div class="note">Build 6 &middot; Nov 4, 2026</div></div></div></div>';
   }
   function addSheet() {
     if (!ui.addsheet) return '';
-    var k = [['note', 'New note'], ['checklist', 'New checklist'], ['task', 'New task'], ['faculty', 'Add faculty or group'], ['letter', 'Add recommender'], ['draft', 'New draft'], ['program', 'Add program']];
-    return '<button class="backdrop" data-act="addmenu" aria-label="Close"></button><div class="sheet" role="dialog" aria-label="Add"><div class="grab"></div><h3>Add</h3>' +
+    var k = [['task', 'New task'], ['note', 'New note'], ['checklist', 'New checklist'], ['draft', 'New draft'], ['faculty', 'Add faculty or group'], ['letter', 'Add recommender']];
+    return '<button class="backdrop" data-act="addmenu" aria-label="Close"></button><div class="sheet" role="dialog" aria-label="Add"><div class="grab"></div>' +
+      '<button class="addlead" data-act="goadd" data-kind="program">' + icon('programs', 24) + '<span class="al"><b>Add a program</b><span>Track a new school, deadline and materials</span></span>' + icon('plus', 22) + '</button><h3>Or add</h3>' +
       k.map(function (x) { return '<button class="lrow" data-act="goadd" data-kind="' + x[0] + '">' + icon('plus', 20) + '<span class="lbl">' + x[1] + '</span></button>'; }).join('') + '</div>';
   }
   function mhead(v) {
