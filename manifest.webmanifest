@@ -1,7 +1,7 @@
 {
- "name": "Grad Apps",
- "short_name": "Grad Apps",
- "description": "Graduate application tracker",
+ "name": "Almanac",
+ "short_name": "Almanac",
+ "description": "Almanac: graduate application tracker",
  "start_url": "./",
  "scope": "./",
  "display": "standalone",
