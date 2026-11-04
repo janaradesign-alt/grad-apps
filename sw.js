@@ -1,4 +1,4 @@
-const CACHE = 'grad-apps-v4';
+const CACHE = 'grad-apps-v5';
 const FILES = ['./', 'index.html', 'seed.json', 'manifest.webmanifest', 'almanac-192.png', 'almanac-512.png', 'almanac-180.png'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
